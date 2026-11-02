@@ -113,8 +113,8 @@ The sensors themselves deliver:
   measured in the incoming frames, every status bit seen since the stream
   started, and how often the bridge was reset after a frame of the wrong
   size. For the ISP path also: frames the ISP processed and dropped, stalls,
-  and the reset value of the RGB to YUV matrix. After a stream the counts
-  of that stream stay readable.
+  the output range, and the RGB to YUV matrix in use. After a stream the
+  counts of that stream stay readable.
 - `/sys/kernel/debug/a0c2000.csi/status`: receiver state, decoded data type,
   lane LP states and error counts. Writing 1 to `power` powers the receiver
   without a stream, to check that an idle sensor's lanes read LP-11.
@@ -158,20 +158,25 @@ end mode. The register sequence follows the vendor's GPL kernel driver
 (`osdrv/interdrv/vi` in Milk-V's duo-buildroot-sdk-v2).
 
 What runs: black level, white balance gains, demosaic, the sRGB gamma curve,
-and the RGB to YUV matrix at its reset value. What does not: lens shading,
+and the BT.601 RGB to YUV matrix. What does not: lens shading,
 the colour matrix, defect pixel correction, noise reduction, sharpening,
 tone mapping, and all statistics. Nothing sets the gains automatically yet:
 an application measures the image and sets the controls.
 
-Not known yet, to check on hardware:
+The output is limited-range BT.601, which H.264 encoders and players
+expect. For full range (JPEG), set `V4L2_PIX_FMT_FLAG_SET_CSC` and
+`V4L2_QUANTIZATION_FULL_RANGE` in `VIDIOC_S_FMT`. The status file shows
+the range in use.
 
-- Whether the output is NV21 as the vendor stack uses it, or NV12. The
-  colour bars show it: with the wrong order, red and blue swap.
-- The scale and range of the matrix at reset. The status file shows it.
-  The driver reports limited-range BT.601 until that is checked.
-- Sizes other than 1920x1080. Frames 2896 or more wide stall on every
-  frame, so the driver limits the width to 2880. The ISP's height fields
-  stop at 4096.
+Tested on a Milk-V Duo S (SG2000, RISC-V) with the CAM-GC2083 at
+1920x1080: NV12 colours are correct (colour bars), 30 fps, no stalls.
+NV21 is correct too: it equals NV12 with the chroma bytes swapped.
+Frames up to 2880 wide work. Frames 2896 or more wide stall on every
+frame, so the driver limits the width to 2880.
+
+Not known yet:
+
+- Heights above 2160. The ISP's height fields stop at 4096.
 
 ## Layout
 
